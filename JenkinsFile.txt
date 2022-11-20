@@ -1,0 +1,51 @@
+pipeline{
+    agent any
+    tools{
+        nodejs  "Node-17-8"
+    }
+    stages{
+        stage('Clone Repository'){
+            steps{
+                echo 'Cloning Project'
+                git 'https://github.com/omondijeff/gallery'
+            }
+        }
+        
+        stage('Build'){
+            steps{
+                echo 'Building Project'
+                sh 'npm install'
+            }
+        }
+        stage('Test'){
+            steps{
+                echo 'Testing Project'
+                sh 'npm test'
+                
+            }
+            post{
+                success {
+                    echo 'Test Successful'
+                }
+                failure{
+                   mail bcc: '', body: "<b>Build Fail</b><br>Project: ${env.JOB_NAME} <br>Build Number: ${env.BUILD_NUMBER} <br> URL of build: ${env.BUILD_URL}", cc: '', charset: 'UTF-8', from: '', mimeType: 'text/html', replyTo: '', subject: "ERROR CI: Project name -> ${env.JOB_NAME}", to: "11554jeff@gmail.com";  
+                }
+            }
+        }
+        
+        stage('Deploy To Heroku'){
+            steps {
+                withCredentials([usernameColonPassword(credentialsId: 'heroku-gallery', variable: 'HEROKU_CREDENTIALS' )]){
+                    sh "git push https://${HEROKU_CREDENTIALS}@git.heroku.com/protected-dawn-48997.git master"
+            }
+            
+        }
+        post{
+            success{
+                slackSend channel: "#jeffery_ip1", message: "Build Deployed: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+            }
+        }
+    }
+}
+    
+}
